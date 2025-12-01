@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDVS - Medicine Data Visualization System</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-content">
+            <h1>💊 MDVS</h1>
+            <p class="subtitle">Medicine Data Visualization System</p>
+        </div>
+        <nav class="main-nav">
+            <a href="#" class="nav-link active" data-tab="search">Search & Filter</a>
+            <a href="#" class="nav-link" data-tab="details">Detailed View</a>
+            <a href="#" class="nav-link" data-tab="insights">Category & Manufacturer Insights</a>
+            <a href="#" class="nav-link" data-tab="export">Data Export</a>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        
+        <section id="search" class="tab-panel active">
+            <h2 class="section-title">Search & Filter</h2>
+            <p class="section-description">Search for medicines by name, manufacturer, or category.</p>
+            <div id="search-container"></div>
+        </section>
+
+        <section id="details" class="tab-panel">
+            <h2 class="section-title">Detailed Information View</h2>
+            <p class="section-description">Select a medicine to view its full information.</p>
+            <div id="details-container"></div>
+        </section>
+
+        <section id="insights" class="tab-panel">
+            <h2 class="section-title">Category & Manufacturer Insights</h2>
+            <p class="section-description">Analytics showing category distribution and manufacturer rankings.</p>
+            
+            <div class="stats-grid" id="stats-container">
+                <div class="stat-card loading">
+                    <div class="stat-value">--</div>
+                    <div class="stat-label">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="insights-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Medicine Distribution by Category</h3>
+                    <div id="category-chart" class="chart"></div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">Top 10 Manufacturers</h3>
+                    <div id="manufacturer-chart" class="chart"></div>
+                </div>
+            </div>
+            
+            <div class="chart-container full-width">
+                <h3 class="chart-title">Categories by Classification Type</h3>
+                <div id="classification-chart" class="chart"></div>
+            </div>
+            
+            <div class="detail-panel" id="detail-panel" style="display: none;">
+                <h3 class="panel-title">Details</h3>
+                <div id="detail-content"></div>
+            </div>
+        </section>
+
+        <section id="export" class="tab-panel">
+            <h2 class="section-title">Data Export & Reporting</h2>
+            <p class="section-description">Export filtered data or download reports.</p>
+            <div id="export-container"></div>
+        </section>
+
+    </main>
+
+    <footer class="main-footer">
+        <p>MDVS - CSE 412 Database Management | Group 43</p>
+        <p class="team">Rhea Soni • Kavish Shah • Craig Seward • Aryan Shah</p>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/insights.js"></script>
+</body>
+</html>
