@@ -1,4 +1,4 @@
-# 💊 Medicine Data Visualization System (MDVS)
+# Medicine Data Visualization System (MDVS)
 
 A full-stack web application for exploring and analyzing medicine data with interactive visualizations and multi-format export capabilities.
 
@@ -9,23 +9,23 @@ A full-stack web application for exploring and analyzing medicine data with inte
 
 ---
 
-## 🎯 Features
+## Features
 
-### 🔍 Search & Filter
+### Search & Filter
 Real-time medicine search with advanced filtering by category, manufacturer, and price range.
 
-### 📊 Interactive Visualizations
+### Interactive Visualizations
 D3.js-powered charts showing category distributions, manufacturer rankings, and statistical insights.
 
-### 📄 Detailed Medicine Information
+### Detailed Medicine Information
 Complete medicine profiles including dosage, uses, side effects, ingredients, and manufacturer details.
 
-### 📥 Multi-Format Export
+### Multi-Format Export
 Export data in **CSV**, **JSON**, **Excel**, and **PDF** formats with customizable options for details, statistics, and chart visualizations.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Backend:** FastAPI • SQLAlchemy • PostgreSQL • Pandas • ReportLab  
 **Frontend:** HTML5 • CSS3 • JavaScript • D3.js • React  
@@ -33,7 +33,7 @@ Export data in **CSV**, **JSON**, **Excel**, and **PDF** formats with customizab
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.8+
@@ -86,7 +86,7 @@ http://localhost:8080
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 MedicineAnalysis/
@@ -113,7 +113,7 @@ MedicineAnalysis/
 
 ---
 
-## 📚 API Endpoints
+## API Endpoints
 
 ### Medicines
 - `GET /api/medicines` - Get all medicines (supports filters)
@@ -123,25 +123,10 @@ MedicineAnalysis/
 - `DELETE /api/medicines/{id}` - Delete medicine
 
 ### Export
-- `POST /api/export/csv` - Export to CSV
-- `POST /api/export/json` - Export to JSON with statistics
-- `POST /api/export/excel` - Export to Excel with multiple sheets
 - `POST /api/export/pdf` - Export to PDF with charts
-- `GET /api/export/formats` - Get available formats
 
-**Example Request:**
-```json
-POST /api/export/json
-{
-  "filters": {},
-  "include_details": true,
-  "include_statistics": true
-}
-```
 
----
-
-## 🗄️ Database Schema
+## Database Schema
 
 **Entities:** Medicine • Manufacturer • Category • Ingredient
 
