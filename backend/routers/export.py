@@ -3,18 +3,19 @@ from fastapi.responses import StreamingResponse
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from database import get_cursor
-import csv
-import json
 import io
 
 router = APIRouter()
 
-def get_medicines_data(filters: Dict[str, Any] = None):
+def get_filtered_medicines(filters: Dict[str, Any] = None):
     """Fetch medicines from database with optional filters."""
     where = []
     params = {}
     
     if filters:
+        if filters.get("q"):
+            where.append("(m.name ILIKE %(q)s OR m.indication ILIKE %(q)s)")
+            params["q"] = f"%{filters['q']}%"
         if filters.get("category"):
             where.append("c.name ILIKE %(category)s")
             params["category"] = f"%{filters['category']}%"
@@ -44,7 +45,10 @@ def get_medicines_data(filters: Dict[str, Any] = None):
     """
     
     with get_cursor() as cur:
-        cur.execute(sql, params) if params else cur.execute(sql.replace("WHERE ", ""))
+        if params:
+            cur.execute(sql, params)
+        else:
+            cur.execute(sql.replace("WHERE ", ""))
         return cur.fetchall()
 
 def generate_statistics(medicines: List[Dict], filters: Dict[str, Any]) -> Dict[str, Any]:
@@ -76,121 +80,6 @@ def generate_statistics(medicines: List[Dict], filters: Dict[str, Any]) -> Dict[
         "top_5_manufacturers": sorted(manufacturers.items(), key=lambda x: x[1], reverse=True)[:5]
     }
 
-@router.post("/csv")
-async def export_to_csv(filters: Dict[str, Any] = {}, include_details: bool = Query(True)):
-    try:
-        medicines = get_medicines_data(filters)
-        
-        output = io.StringIO()
-        if medicines:
-            fieldnames = medicines[0].keys()
-            writer = csv.DictWriter(output, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(medicines)
-        
-        output.seek(0)
-        filename = f"medicine_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        
-        return StreamingResponse(
-            io.BytesIO(output.getvalue().encode()),
-            media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error exporting to CSV: {str(e)}")
-
-@router.post("/json")
-async def export_to_json(
-    filters: Dict[str, Any] = {},
-    include_details: bool = Query(True),
-    include_statistics: bool = Query(True)
-):
-    try:
-        medicines = get_medicines_data(filters)
-        
-        response_data = {
-            "export_info": {
-                "timestamp": datetime.now().isoformat(),
-                "total_records": len(medicines),
-                "filters_applied": filters
-            },
-            "data": medicines
-        }
-        
-        if include_statistics:
-            response_data["statistics"] = generate_statistics(medicines, filters)
-        
-        filename = f"medicine_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        return StreamingResponse(
-            io.BytesIO(json.dumps(response_data, indent=2, default=str).encode()),
-            media_type="application/json",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error exporting to JSON: {str(e)}")
-
-@router.post("/excel")
-async def export_to_excel(
-    filters: Dict[str, Any] = {},
-    include_details: bool = Query(True),
-    include_charts: bool = Query(True)
-):
-    try:
-        import pandas as pd
-        
-        medicines = get_medicines_data(filters)
-        statistics = generate_statistics(medicines, filters)
-        
-        output = io.BytesIO()
-        
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df = pd.DataFrame(medicines)
-            df.to_excel(writer, sheet_name='Medicine Data', index=False)
-            
-            stats_data = [
-                ['Export Information', ''],
-                ['Total Medicines', statistics['total_medicines']],
-                ['Export Timestamp', statistics['export_timestamp']],
-                ['', ''],
-                ['Category Distribution', 'Count']
-            ]
-            for category, count in statistics['category_distribution'].items():
-                stats_data.append([category, count])
-            
-            stats_data.append(['', ''])
-            stats_data.append(['Top Manufacturers', 'Count'])
-            for manufacturer, count in statistics['top_5_manufacturers']:
-                stats_data.append([manufacturer, count])
-            
-            stats_df = pd.DataFrame(stats_data)
-            stats_df.to_excel(writer, sheet_name='Statistics', index=False, header=False)
-            
-            workbook = writer.book
-            worksheet = writer.sheets['Medicine Data']
-            
-            header_format = workbook.add_format({
-                'bold': True,
-                'bg_color': '#4472C4',
-                'font_color': 'white',
-                'border': 1
-            })
-            
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column(col_num, col_num, 18)
-        
-        output.seek(0)
-        filename = f"medicine_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error exporting to Excel: {str(e)}")
-
 @router.post("/pdf")
 async def export_to_pdf(
     filters: Dict[str, Any] = {},
@@ -201,12 +90,12 @@ async def export_to_pdf(
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from reportlab.lib.enums import TA_CENTER
         
-        medicines = get_medicines_data(filters)
+        medicines = get_filtered_medicines(filters)
         statistics = generate_statistics(medicines, filters)
         
         buffer = io.BytesIO()
@@ -236,10 +125,16 @@ async def export_to_pdf(
         elements.append(Paragraph("Medicine Data Export Report", title_style))
         elements.append(Spacer(1, 12))
         
+        filter_text = "None"
+        if filters:
+            active_filters = [f"{k}: {v}" for k, v in filters.items() if v]
+            if active_filters:
+                filter_text = ", ".join(active_filters)
+        
         info_text = f"""
         <b>Export Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/>
         <b>Total Medicines:</b> {statistics['total_medicines']}<br/>
-        <b>Filters Applied:</b> {', '.join([f"{k}: {v}" for k, v in (filters or {}).items()]) if filters else 'None'}
+        <b>Filters Applied:</b> {filter_text}
         """
         elements.append(Paragraph(info_text, styles['Normal']))
         elements.append(Spacer(1, 20))
@@ -303,6 +198,35 @@ async def export_to_pdf(
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
             elements.append(cls_table)
+            elements.append(Spacer(1, 20))
+        
+        if medicines and len(medicines) > 0:
+            elements.append(PageBreak())
+            elements.append(Paragraph("Medicine Data", heading_style))
+            elements.append(Spacer(1, 12))
+            
+            table_data = [['Name', 'Category', 'Manufacturer', 'Classification']]
+            for med in medicines:
+                table_data.append([
+                    str(med.get('medicine_name', 'N/A'))[:30],
+                    str(med.get('category', 'N/A'))[:20],
+                    str(med.get('manufacturer', 'N/A'))[:20],
+                    str(med.get('classification', 'N/A'))
+                ])
+            
+            data_table = Table(table_data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.2*inch])
+            data_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f4788')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.Color(0.95, 0.95, 0.95)])
+            ]))
+            elements.append(data_table)
         
         doc.build(elements)
         
@@ -316,38 +240,3 @@ async def export_to_pdf(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error exporting to PDF: {str(e)}")
-
-@router.get("/formats")
-async def get_available_formats():
-    return {
-        "formats": [
-            {
-                "name": "CSV",
-                "extension": ".csv",
-                "description": "Comma-separated values for spreadsheets",
-                "supports_charts": False,
-                "supports_statistics": False
-            },
-            {
-                "name": "JSON",
-                "extension": ".json",
-                "description": "Structured data for APIs",
-                "supports_charts": False,
-                "supports_statistics": True
-            },
-            {
-                "name": "Excel",
-                "extension": ".xlsx",
-                "description": "Microsoft Excel with multiple sheets",
-                "supports_charts": True,
-                "supports_statistics": True
-            },
-            {
-                "name": "PDF",
-                "extension": ".pdf",
-                "description": "Report format with tables",
-                "supports_charts": True,
-                "supports_statistics": True
-            }
-        ]
-    }
