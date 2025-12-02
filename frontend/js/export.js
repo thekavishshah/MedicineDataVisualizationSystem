@@ -138,8 +138,8 @@ async function loadExportFilterOptions() {
         if (catSelect && data.categories) {
             data.categories.forEach(cat => {
                 const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat;
+                option.value = cat.name;
+                option.textContent = cat.name;
                 catSelect.appendChild(option);
             });
         }
@@ -148,8 +148,8 @@ async function loadExportFilterOptions() {
         if (mfrSelect && data.manufacturers) {
             data.manufacturers.forEach(mfr => {
                 const option = document.createElement('option');
-                option.value = mfr;
-                option.textContent = mfr;
+                option.value = mfr.name;
+                option.textContent = mfr.name;
                 mfrSelect.appendChild(option);
             });
         }
